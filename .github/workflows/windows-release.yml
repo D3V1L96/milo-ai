@@ -1,0 +1,55 @@
+name: Windows installer draft
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Prepare packaged backend
+        shell: pwsh
+        run: |
+          py -3.14 -m venv backend/.venv
+          backend/.venv/Scripts/python.exe -m pip install --upgrade pip
+          backend/.venv/Scripts/python.exe -m pip install -r backend/build-requirements.txt
+
+      - name: Build installer and create draft release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "MILO ${{ github.ref_name }}"
+          releaseBody: |
+            Windows installer for MILO.
+
+            Review the setup notes and known requirements in README before installing.
+          releaseDraft: true
+          prerelease: true
+          args: --bundles nsis

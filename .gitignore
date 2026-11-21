@@ -1,0 +1,27 @@
+# Frontend dependencies and generated bundles
+node_modules/
+dist/
+build/
+
+# Python environments, caches and packaged backend output
+backend/.venv/
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/build/
+backend/dist/
+backend/tmp*/
+
+# Rust/Tauri build output
+src-tauri/target/
+
+# Local secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+*.log
+/.deep-copilot/
+/.vscode/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
