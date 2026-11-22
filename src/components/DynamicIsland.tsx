@@ -325,7 +325,8 @@ export default function DynamicIsland() {
         gazeVideo.current.srcObject = stream;
         await gazeVideo.current.play();
         const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
-        const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm");
+        const fileset = await FilesetResolver.forVisionTasks("/mediapipe/wasm", false);
+        if (!active) return;
         landmarker = await FaceLandmarker.createFromOptions(fileset, {
           baseOptions: { modelAssetPath: "/mediapipe/models/face_landmarker.task" },
           runningMode: "VIDEO",

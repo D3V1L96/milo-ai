@@ -2,6 +2,7 @@
 node_modules/
 dist/
 build/
+/public/mediapipe/wasm/
 
 # Python environments, caches and packaged backend output
 backend/.venv/
