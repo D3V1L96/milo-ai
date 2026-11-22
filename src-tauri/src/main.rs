@@ -11,6 +11,14 @@ use tauri::{Manager, RunEvent};
 
 struct BackendProcess(Mutex<Child>);
 
+#[tauri::command]
+fn save_window_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
+    let directory = app.path().app_local_data_dir().map_err(|error| error.to_string())?;
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    fs::write(directory.join("widget-position.txt"), format!("{x},{y}"))
+        .map_err(|error| error.to_string())
+}
+
 /// Build a `Command` that never flashes a console window on Windows.
 fn hidden_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     #[allow(unused_mut)]
@@ -143,6 +151,16 @@ fn start_backend(app: &tauri::App) -> Result<Child, Box<dyn std::error::Error>> 
 fn main() {
     let app = tauri::Builder::default()
         .setup(|app| {
+            if let Ok(directory) = app.path().app_local_data_dir() {
+                if let Ok(position) = fs::read_to_string(directory.join("widget-position.txt")) {
+                    let mut values = position.trim().split(',').filter_map(|part| part.parse::<i32>().ok());
+                    if let (Some(x), Some(y)) = (values.next(), values.next()) {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+                        }
+                    }
+                }
+            }
             start_ollama();
             match start_backend(app) {
                 Ok(backend) => {
@@ -167,6 +185,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![save_window_position])
         .build(tauri::generate_context!())
         .expect("failed to build MILO");
 

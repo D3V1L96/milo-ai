@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   ChevronDown, Minus, BellRing, LayoutGrid, ListTodo, Clock3, Music2, RefreshCw,
   MessageSquare, Pin, PinOff, Volume2, VolumeX, Settings, Lock, Unlock, Plus, X, Camera, CameraOff,
@@ -260,6 +261,7 @@ export default function DynamicIsland() {
   const cueTimer = useRef<number | null>(null);
   const dragControls = useDragControls();
   const dragEndedAt = useRef(0);
+  const nativeDragStart = useRef<{ x: number; y: number } | null>(null);
   const waveBars = useRef<(HTMLSpanElement | null)[]>([]);
   const gazeVideo = useRef<HTMLVideoElement | null>(null);
   const noticeTimer = useRef<number | null>(null);
@@ -293,6 +295,20 @@ export default function DynamicIsland() {
 
   useEffect(() => () => {
     if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
+  }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    let saveTimer = 0;
+    void getCurrentWindow().onMoved(({ payload }) => {
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        void invoke("save_window_position", { x: payload.x, y: payload.y }).catch(() => {});
+      }, 250);
+    }).then((stop) => { if (active) unlisten = stop; else stop(); });
+    return () => { active = false; unlisten?.(); window.clearTimeout(saveTimer); };
   }, []);
 
   useEffect(() => {
@@ -387,7 +403,11 @@ export default function DynamicIsland() {
   const startDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (preferences.locked) return;
     if (event.target instanceof Element && event.target.closest("button,input")) return;
-    if (isTauri()) return;
+    if (isTauri()) {
+      nativeDragStart.current = { x: event.clientX, y: event.clientY };
+      void getCurrentWindow().startDragging().catch(() => {});
+      return;
+    }
     dragControls.start(event);
   };
 
@@ -775,7 +795,7 @@ export default function DynamicIsland() {
         role="button" tabIndex={0} aria-expanded={open}
         aria-label={open ? "Collapse MILO" : "Expand MILO"}
         title={preferences.locked ? "MILO position locked · double-click to unlock" : "Drag to move · double-click to lock"}
-        drag={!preferences.locked}
+        drag={!isTauri() && !preferences.locked}
         dragControls={dragControls}
         dragListener={false}
         dragMomentum={false}
@@ -797,6 +817,11 @@ export default function DynamicIsland() {
           }));
         }}
         onClick={(event) => {
+          const nativeStart = nativeDragStart.current;
+          nativeDragStart.current = null;
+          if (nativeStart && Math.hypot(event.clientX - nativeStart.x, event.clientY - nativeStart.y) > 5) {
+            dragEndedAt.current = Date.now();
+          }
           if (Date.now() - dragEndedAt.current < 250) return;
           if (event.target instanceof Element && event.target.closest("button,input")) return;
           setOpen((o) => !o);
@@ -817,7 +842,7 @@ export default function DynamicIsland() {
           height: open
             ? settingsOpen ? 430 : panelMode === "notifications" && showNotifs ? 500 : islandNotice ? 410 : 360
             : 34,
-          borderRadius: open ? 34 : 20, x: preferences.x, y: preferences.y, opacity: 1
+          borderRadius: open ? 34 : 20, x: isTauri() ? 0 : preferences.x, y: isTauri() ? 0 : preferences.y, opacity: 1
         }}
         transition={spring}
         whileHover={open ? {} : { width: 152, height: 38 }}
