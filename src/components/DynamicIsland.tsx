@@ -261,7 +261,6 @@ export default function DynamicIsland() {
   const cueTimer = useRef<number | null>(null);
   const dragControls = useDragControls();
   const dragEndedAt = useRef(0);
-  const nativeDragStart = useRef<{ x: number; y: number } | null>(null);
   const waveBars = useRef<(HTMLSpanElement | null)[]>([]);
   const gazeVideo = useRef<HTMLVideoElement | null>(null);
   const noticeTimer = useRef<number | null>(null);
@@ -404,11 +403,7 @@ export default function DynamicIsland() {
   const startDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (preferences.locked) return;
     if (event.target instanceof Element && event.target.closest("button,input")) return;
-    if (isTauri()) {
-      nativeDragStart.current = { x: event.clientX, y: event.clientY };
-      void getCurrentWindow().startDragging().catch(() => {});
-      return;
-    }
+    if (isTauri()) return;
     dragControls.start(event);
   };
 
@@ -818,11 +813,6 @@ export default function DynamicIsland() {
           }));
         }}
         onClick={(event) => {
-          const nativeStart = nativeDragStart.current;
-          nativeDragStart.current = null;
-          if (nativeStart && Math.hypot(event.clientX - nativeStart.x, event.clientY - nativeStart.y) > 5) {
-            dragEndedAt.current = Date.now();
-          }
           if (Date.now() - dragEndedAt.current < 250) return;
           if (event.target instanceof Element && event.target.closest("button,input")) return;
           setOpen((o) => !o);
