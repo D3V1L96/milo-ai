@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { isTauri } from "@tauri-apps/api/core";
 import {
   ChevronDown, Minus, BellRing, LayoutGrid, ListTodo, Clock3, Music2, RefreshCw,
   MessageSquare, Pin, PinOff, Volume2, VolumeX, Settings, Lock, Unlock, Plus, X, Camera, CameraOff,
@@ -386,6 +387,7 @@ export default function DynamicIsland() {
   const startDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (preferences.locked) return;
     if (event.target instanceof Element && event.target.closest("button,input")) return;
+    if (isTauri()) return;
     dragControls.start(event);
   };
 
@@ -824,6 +826,7 @@ export default function DynamicIsland() {
         <AnimatePresence mode="wait" initial={false}>
           {!open ? (
             <motion.div key="compact" className={`compact ${media.playing || speaking ? "has-wave" : ""}`}
+              data-tauri-drag-region="true"
               onPointerDown={startDrag}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.14 }}>
@@ -850,7 +853,7 @@ export default function DynamicIsland() {
               transition={{ duration: 0.2, delay: 0.06 }}>
 
               <div className="head">
-                <div className="head-left" onPointerDown={startDrag}>
+                <div className="head-left" data-tauri-drag-region="true" onPointerDown={startDrag}>
                   <MiloEyes emotion={emotion} size={0.72} lookAt={gazeLook} />
                   <div>
                     <div className={`state state-${state.toLowerCase()}`}>{state}</div>

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from .runtime_paths import bridge_directory
+from .hidden_process import hidden_process_options
 
 Emit = Callable[[dict], Awaitable[None]]
 BRIDGE = bridge_directory()
@@ -46,6 +47,7 @@ class MediaBridge:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            **hidden_process_options(),
         )
         assert self._proc.stdout is not None
         try:

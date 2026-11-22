@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from .runtime_paths import bridge_directory
+from .hidden_process import hidden_process_options
 
 from .notification_classification import classify_notification
 
@@ -34,6 +35,7 @@ class BridgeSource:
             "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(self.path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            **hidden_process_options(),
         )
         assert proc.stdout is not None
         try:

@@ -9,6 +9,7 @@ import subprocess
 from dataclasses import dataclass
 from ctypes import wintypes
 from pathlib import Path
+from .hidden_process import hidden_process_options
 
 import psutil
 
@@ -105,6 +106,7 @@ def _registered_start_apps() -> list[tuple[str, str]]:
             check=True,
             text=True,
             timeout=10,
+            **hidden_process_options(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise AppControlError(f"Could not scan registered Windows apps: {exc}") from exc

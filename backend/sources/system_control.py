@@ -7,6 +7,7 @@ import subprocess
 from typing import Any
 
 import psutil
+from .hidden_process import hidden_process_options
 
 
 class SystemControlError(Exception):
@@ -54,6 +55,7 @@ def _run_powershell(script: str) -> str:
             check=True,
             text=True,
             timeout=15,
+            **hidden_process_options(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         detail = getattr(exc, "stderr", None) or str(exc)
@@ -137,6 +139,7 @@ def schedule_power_action(action: str) -> None:
         subprocess.Popen(
             ["shutdown.exe", switch, "/t", "60", "/c", "MILO requested this action."],
             close_fds=True,
+            **hidden_process_options(),
         )
     except OSError as exc:
         raise SystemControlError(f"Could not schedule {action}: {exc}") from exc
@@ -151,6 +154,7 @@ def cancel_scheduled_power_action() -> None:
             check=True,
             text=True,
             timeout=15,
+            **hidden_process_options(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         detail = getattr(exc, "stderr", None) or str(exc)

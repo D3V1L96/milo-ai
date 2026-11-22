@@ -50,6 +50,6 @@ jobs:
             Windows installer for MILO.
 
             Review the setup notes and known requirements in README before installing.
-          releaseDraft: true
-          prerelease: true
+          releaseDraft: false
+          prerelease: false
           args: --bundles nsis

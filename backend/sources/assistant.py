@@ -89,7 +89,7 @@ class OllamaClient:
                 "messages": messages,
                 "tools": tools,
                 "stream": False,
-                "keep_alive": "5m",
+                "keep_alive": -1,
                 "options": {"temperature": 0.35},
             },
             180,

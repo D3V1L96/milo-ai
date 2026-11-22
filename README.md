@@ -16,7 +16,7 @@ backend\.venv\Scripts\python.exe -m pip install -r backend\build-requirements.tx
 npm run tauri:build
 ```
 
-The NSIS installer is written under `src-tauri\target\release\bundle\nsis`. Give that installer to Windows users; they do not need Node, Rust or Python installed. MILO does not include Ollama or an LLM model, so AI chat needs Ollama and a supported model installed separately. Fish Audio voice synthesis is optional and needs a user-provided `FISH_API_KEY`; microphone recognition uses the bundled speech-recognition dependencies and Google's online speech service.
+The NSIS installer is written under `src-tauri\target\release\bundle\nsis`. Give that installer to Windows users; they do not need Node, Rust or Python installed. MILO starts Ollama silently when installed and keeps the configured local model loaded while MILO runs. Install Ollama and pull `llama3.2` once; MILO does not bundle the multi-gigabyte model. Fish Audio voice synthesis is optional and needs a user-provided `FISH_API_KEY`; microphone recognition uses the bundled speech-recognition dependencies and Google's online speech service.
 
 ## Run from source
 
@@ -47,8 +47,8 @@ For the desktop window in development, use `npm run tauri:dev`; this starts the 
 - Sign the installer with the publisher certificate before public distribution.
 - Publish the supported Windows version, required optional services, privacy details and a support contact with the download.
 
-## Build a GitHub download draft
+## Publish a GitHub download
 
-Push this source to a GitHub repository, then push a version tag such as `v0.1.0`. The Windows release workflow builds the NSIS installer on a Windows runner and creates a **draft prerelease** with the installer attached. Review the installer and release notes in GitHub, then publish the draft when ready. The app version in `src-tauri/tauri.conf.json` should match the tag. Public distribution should wait until the clean-machine checks above pass and the installer is signed.
+Push a version tag matching `src-tauri/tauri.conf.json`, such as `v0.1.1`. The Windows release workflow builds the NSIS installer on a Windows runner and publishes a GitHub release with the installer attached.
 
 MILO's operating-system integrations currently target Windows. Other operating systems need their own native bridge and installer before they are supported.
