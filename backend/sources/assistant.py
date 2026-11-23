@@ -608,37 +608,78 @@ def _system_action_was_requested(text: str, action: str) -> bool:
         return False
     patterns = {
         "status": r"\b(?:system status|system info|cpu|ram|battery|memory usage)\b",
-        "get_brightness": r"\b(?:get|check|what is|show)\b.{0,20}\bbrightness\b",
+        "get_brightness": r"\b(?:get|check|what is|show|batao|bata)\b.{0,20}\bbrightness\b",
         "set_brightness": (
             r"\b(?:set|change|increase|decrease|raise|lower|turn up|turn down)\b"
             r".{0,30}\bbrightness\b"
             r"|\bbrightness\b.{0,20}\b(?:to|at)\s+\d{1,3}\b"
+            r"|\bbrightness\s+\d{1,3}\s*(?:kar do|set karo|pe|par)?\b"
             r"|स्क्रीन\s+की\s+रोशनी.{0,20}(?:बढ़ा|कम|सेट)"
         ),
-        "wifi_enable": r"\b(?:wi-?fi|wireless)\b.{0,30}\b(?:enable|turn on|switch on)\b",
-        "wifi_disable": r"\b(?:wi-?fi|wireless)\b.{0,30}\b(?:disable|turn off|switch off)\b",
-        "bluetooth_enable": r"\bbluetooth\b.{0,30}\b(?:enable|turn on|switch on)\b",
-        "bluetooth_disable": r"\bbluetooth\b.{0,30}\b(?:disable|turn off|switch off)\b",
-        "lock_screen": r"\b(?:lock (?:the )?(?:screen|computer|pc|workstation)|lock screen)\b",
-        "open_settings": r"\b(?:open|launch)\b.{0,25}\bsettings\b",
+        "wifi_enable": r"\b(?:wi-?fi|wireless)\b.{0,30}\b(?:enable|turn on|switch on|on|on kar do|chalu|chaalu)\b|\b(?:enable|turn on|switch on|chalu|chaalu)\b.{0,30}\b(?:wi-?fi|wireless)\b",
+        "wifi_disable": r"\b(?:wi-?fi|wireless)\b.{0,30}\b(?:disable|turn off|switch off|off|off kar do|band)\b|\b(?:disable|turn off|switch off|band)\b.{0,30}\b(?:wi-?fi|wireless)\b",
+        "bluetooth_enable": r"\bbluetooth\b.{0,30}\b(?:enable|turn on|switch on|on|on kar do|chalu|chaalu)\b|\b(?:enable|turn on|switch on|chalu|chaalu)\b.{0,30}\bbluetooth\b",
+        "bluetooth_disable": r"\bbluetooth\b.{0,30}\b(?:disable|turn off|switch off|off|off kar do|band)\b|\b(?:disable|turn off|switch off|band)\b.{0,30}\bbluetooth\b",
+        "lock_screen": r"\b(?:lock (?:the )?(?:screen|computer|pc|workstation)|lock screen|pc lock karo|computer lock karo)\b",
+        "open_settings": r"\b(?:open|launch|kholo|khol do)\b.{0,25}\bsettings\b",
     }
     if action not in patterns:
         return False
     if re.search(patterns[action], lowered):
         return True
     if action in {"wifi_enable", "wifi_disable"}:
+        verbs = (
+            r"enable|turn on|switch on|chalu|chaalu"
+            if action == "wifi_enable"
+            else r"disable|turn off|switch off|band"
+        )
         return re.search(
-            r"\b(?:enable|turn on|switch on|disable|turn off|switch off)\b"
-            r".{0,30}\b(?:wi-?fi|wireless)\b",
+            rf"\b(?:{verbs})\b.{{0,30}}\b(?:wi-?fi|wireless)\b",
             lowered,
         ) is not None
     if action in {"bluetooth_enable", "bluetooth_disable"}:
+        verbs = (
+            r"enable|turn on|switch on|chalu|chaalu"
+            if action == "bluetooth_enable"
+            else r"disable|turn off|switch off|band"
+        )
         return re.search(
-            r"\b(?:enable|turn on|switch on|disable|turn off|switch off)\b"
-            r".{0,30}\bbluetooth\b",
+            rf"\b(?:{verbs})\b.{{0,30}}\bbluetooth\b",
             lowered,
         ) is not None
     return False
+
+
+def _direct_system_control_request(text: str) -> tuple[str, dict] | None:
+    """Fast path for clear, common system commands; ambiguous requests stay with the model."""
+    status_request = re.search(
+        r"\b(?:system status|system info|memory usage|cpu usage|ram usage|battery status|battery level)\b"
+        r"|\b(?:show|check|get|what is|batao)\b.{0,24}\b(?:cpu|ram|battery|memory)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if status_request and _system_action_was_requested(text, "status"):
+        return "status", {"action": "status"}
+    if _system_action_was_requested(text, "get_brightness"):
+        return "get_brightness", {"action": "get_brightness"}
+    if re.search(r"\b(?:nahi|nahin|mat|don't|do not|never|not)\b", text, re.IGNORECASE) or "?" in text:
+        return None
+    if _system_action_was_requested(text, "set_brightness"):
+        match = re.search(r"\b(\d{1,3})\s*(?:%|percent)?\b", text)
+        if match and re.search(r"\bbrightness\b", text, re.IGNORECASE):
+            return "set_brightness", {"action": "set_brightness", "value": int(match.group(1))}
+    for kind in ("wifi", "bluetooth"):
+        for suffix in ("enable", "disable"):
+            action = f"{kind}_{suffix}"
+            if _system_action_was_requested(text, action):
+                return action, {"action": action}
+    if _system_action_was_requested(text, "lock_screen"):
+        return "lock_screen", {"action": "lock_screen"}
+    if _system_action_was_requested(text, "open_settings"):
+        page = re.search(r"\b(display|network|bluetooth|apps|updates|sound)\b", text, re.IGNORECASE)
+        if page:
+            return "open_settings", {"action": "open_settings", "page": page.group(1).lower()}
+    return None
 
 
 def _tool_definitions() -> list[dict]:
@@ -1106,6 +1147,7 @@ class AssistantService:
             else None
         )
         direct_whatsapp = _direct_whatsapp_request(text)
+        direct_system = _direct_system_control_request(text)
         pending_whatsapp = self._pending_whatsapp.get(websocket)
         pending_power = self._pending_power_actions.get(websocket)
         attachment_is_whatsapp_target = _whatsapp_file_intent(text, file_id is not None)
@@ -1293,6 +1335,29 @@ class AssistantService:
                         "Reply yes to confirm or cancel to stop."
                     )
                     direct_result = {"status": "awaiting_confirmation", "action": power_action}
+            elif direct_system:
+                action, arguments = direct_system
+                direct_result = await self._execute_tool("system_control", arguments, text)
+                if direct_result.get("error"):
+                    answer = str(direct_result["error"])
+                else:
+                    result = direct_result.get("result", {})
+                    hinglish = bool(re.search(r"\b(?:karo|kar do|chalu|band|batao|mera|meri)\b", text, re.IGNORECASE))
+                    if action == "status":
+                        parts = [f"CPU {result.get('cpu_percent', '—')}%", f"RAM {result.get('ram_percent', '—')}%"]
+                        if "battery_percent" in result:
+                            parts.append(f"Battery {result['battery_percent']}%" + (" (charging)" if result.get("charging") else ""))
+                        answer = ("System ka status: " if hinglish else "System status: ") + ", ".join(parts) + "."
+                    elif action in {"get_brightness", "set_brightness"}:
+                        answer = f"Brightness {result.get('brightness')}% hai." if hinglish else f"Brightness is {result.get('brightness')}%."
+                    elif action.endswith("enable"):
+                        answer = f"{action.split('_')[0].capitalize()} on kar diya." if hinglish else f"Turned {action.split('_')[0]} on."
+                    elif action.endswith("disable"):
+                        answer = f"{action.split('_')[0].capitalize()} band kar diya." if hinglish else f"Turned {action.split('_')[0]} off."
+                    elif action == "lock_screen":
+                        answer = "Screen lock kar di." if hinglish else "Locked the screen."
+                    else:
+                        answer = f"Opened the {result.get('page', 'requested')} Settings page."
             elif direct_youtube:
                 direct_result = await self._execute_tool(
                     "play_youtube", {"query": direct_youtube}, text

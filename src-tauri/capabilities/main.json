@@ -3,5 +3,5 @@
   "identifier": "main-window",
   "description": "MILO desktop widget window permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-start-dragging"]
+  "permissions": ["core:default", "core:window:allow-start-dragging", "core:window:allow-set-size", "core:window:allow-set-position"]
 }

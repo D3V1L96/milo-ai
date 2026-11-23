@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import {
   ChevronDown, Minus, BellRing, LayoutGrid, ListTodo, Clock3, Music2, RefreshCw,
   MessageSquare, Pin, PinOff, Volume2, VolumeX, Settings, Lock, Unlock, Plus, X, Camera, CameraOff,
@@ -275,6 +275,9 @@ export default function DynamicIsland() {
   };
   const activeTheme = [...BUILTIN_THEMES, ...preferences.customThemes]
     .find((theme) => theme.id === preferences.themeId) || BUILTIN_THEMES[0];
+  const islandHeight = open
+    ? settingsOpen ? 430 : panelMode === "notifications" && showNotifs ? 500 : islandNotice ? 410 : 360
+    : 34;
   const islandStyle = {
     "--island-opacity": preferences.opacity / 100,
     "--accent": activeTheme.accent,
@@ -309,6 +312,22 @@ export default function DynamicIsland() {
     }).then((stop) => { if (active) unlisten = stop; else stop(); });
     return () => { active = false; unlisten?.(); window.clearTimeout(saveTimer); };
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const nativeWindow = getCurrentWindow();
+    const width = open ? 386 : 132;
+    void Promise.all([nativeWindow.innerSize(), nativeWindow.outerPosition(), nativeWindow.scaleFactor()])
+      .then(async ([size, position, scale]) => {
+        const targetWidth = Math.round(width * scale);
+        await nativeWindow.setSize(new LogicalSize(width, open ? islandHeight + 14 : 48));
+        if (size.width !== targetWidth) {
+          await nativeWindow.setPosition(new PhysicalPosition(
+            position.x + Math.round((size.width - targetWidth) / 2), position.y,
+          ));
+        }
+      }).catch(() => {});
+  }, [open, islandHeight]);
 
   useEffect(() => {
     if (!cameraTracking) { setGazeLook(null); setGazeStatus(""); return; }
@@ -830,13 +849,11 @@ export default function DynamicIsland() {
         initial={{ width: 132, height: 34, borderRadius: 20, y: -40, opacity: 0 }}
         animate={{
           width: open ? 386 : 132,
-          height: open
-            ? settingsOpen ? 430 : panelMode === "notifications" && showNotifs ? 500 : islandNotice ? 410 : 360
-            : 34,
+          height: islandHeight,
           borderRadius: open ? 34 : 20, x: isTauri() ? 0 : preferences.x, y: isTauri() ? 0 : preferences.y, opacity: 1
         }}
         transition={spring}
-        whileHover={open ? {} : { width: 152, height: 38 }}
+        whileHover={open || isTauri() ? {} : { width: 152, height: 38 }}
         whileTap={{ scale: 0.985 }}
       >
         <AnimatePresence mode="wait" initial={false}>

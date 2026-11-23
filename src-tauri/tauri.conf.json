@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MILO",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.milo.companion",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,10 +14,10 @@
       {
         "label": "main",
         "title": "MILO",
-        "width": 420,
-        "height": 540,
-        "minWidth": 420,
-        "minHeight": 540,
+        "width": 132,
+        "height": 48,
+        "minWidth": 132,
+        "minHeight": 48,
         "center": true,
         "resizable": false,
         "decorations": false,
